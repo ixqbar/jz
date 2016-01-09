@@ -5,7 +5,7 @@
 string jz_version()
 
 string jz_encrypt($text, $key)
-array jz_decrypt($text, $key)
+string jz_decrypt($text, $key)
 
 class JZ_Data() {
     public __construct($data, $readonly=true) {}

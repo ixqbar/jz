@@ -187,7 +187,7 @@ PHP_FUNCTION(jz_encrypt)
 
 	//header
 	char header[33];
-	size_t i = sprintf(header, "ok,%d,%lu,%u", gzip, aes_data_len, crc);
+	size_t i = sprintf(header, "o,%d,%lu,%d,%u,",encrypt_data_len, crc, gzip, aes_data_len);
 	for (; i < 32; i++) {
 		header[i] = ' ';
 	}
@@ -221,19 +221,15 @@ PHP_FUNCTION(jz_decrypt)
 	char *decrypt_data = NULL, *decrypt_key=NULL;
 	size_t decrypt_data_len, decrypt_key_len;
 
-	array_init(return_value);
-	add_index_bool(return_value, 0, 1);
-	add_index_string(return_value, 1, "");
-
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &decrypt_data, &decrypt_data_len, &decrypt_key, &decrypt_key_len) == FAILURE) {
-		return;
+		RETURN_NULL();
 	}
 
 	if (decrypt_data_len < 48
 		|| decrypt_data_len % 16 != 0
 		|| 0 == decrypt_key_len
 		|| decrypt_key_len % 16 != 0) {
-		return;
+		RETURN_NULL();
 	}
 
 	//iv
@@ -243,76 +239,69 @@ PHP_FUNCTION(jz_decrypt)
 	size_t aes_origin_buf_len = 0;
 	char *aes_origin_buf = jz_crypt(decrypt_key, decrypt_key_len, aes_iv, 16, decrypt_data + 16, decrypt_data_len - 16, JZ_MCRYPT_TO_DECRYPT, &aes_origin_buf_len);
 	if (!aes_origin_buf || 0 == aes_origin_buf_len) {
-		return;
+		RETURN_NULL();
 	}
 
 	char header[33];
 	memcpy(header, aes_origin_buf, 32);
 	header[32] = '\0';
 
-	char* header_flags[4];
+	char* header_flags[5];
 	char* flags = strtok(header, ",");
 	int i;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < 5; i++) {
 		header_flags[i] = flags;
 		flags = strtok(NULL, ",");
 	}
 
-	if (strcmp(header_flags[0], "ok") != 0) {
+	if (strcmp(header_flags[0], "o") != 0) {
 		free(aes_origin_buf);
-		return;
+		RETURN_NULL();
 	}
 
 	int is_zip = 0;
-	if (strcmp(header_flags[1], "1") == 0) {
+	if (atoi(header_flags[3]) == 1) {
 		is_zip = 1;
 	}
 
-	size_t origin_data_size = strtoul(header_flags[2], NULL, 10);
-
+	size_t origin_data_size = 0 == is_zip ? strtoul(header_flags[4], NULL, 10) : strtoul(header_flags[1], NULL, 10);
 	char *origin_data = NULL;
-	size_t origin_data_len = origin_data_size;
 
 	if (is_zip) {
-		origin_data = emalloc(aes_origin_buf_len - 32);
-		if (!origin_data || uncompress((unsigned char *)origin_data, &origin_data_len, (const unsigned char *)(aes_origin_buf + 32), origin_data_len) != Z_OK) {
+		origin_data = emalloc(origin_data_size);
+		if (!origin_data || uncompress((unsigned char *)origin_data, &origin_data_size, (const unsigned char *)(aes_origin_buf + 32), aes_origin_buf_len - 32) != Z_OK) {
 			if (origin_data) {
 				efree(origin_data);
 			}
-			return;
+			php_printf("error\n");
+			RETURN_NULL();
 		}
 	} else {
-		origin_data = estrndup(aes_origin_buf + 32, origin_data_len);
+		origin_data = estrndup(aes_origin_buf + 32, origin_data_size);
 	}
 
 	free(aes_origin_buf);
 
 	if (!origin_data) {
-		return;
+		RETURN_NULL();
 	}
 
 	int crc = 0^0xFFFFFFFF;
-	size_t n = origin_data_len;
+	size_t n = origin_data_size;
 
 	while (n--) {
 		crc = ((crc >> 8) & 0x00FFFFFF) ^ crc32tab[(crc ^ (*origin_data++)) & 0xFF ];
 	}
 	crc = crc^0xFFFFFFFF;
 
-	origin_data -= origin_data_len;
+	origin_data -= origin_data_size;
 
-	//fixed 32bit crc error
-	char crc_str[1 + strlen(header_flags[3])];
-	int crc_str_len = sprintf(crc_str, "%u", crc);
-	crc_str[crc_str_len] = '\0';
-
-	if (atoi(crc_str) != atoi(header_flags[3])) {
+	if (crc != atoi(header_flags[2])) {
 		efree(origin_data);
-		return;
+		RETURN_NULL();
 	}
 
-	add_index_bool(return_value, 0, 0);
-	add_index_stringl(return_value, 1, origin_data, origin_data_len);
+	RETVAL_STRINGL(origin_data, origin_data_size);
 	efree(origin_data);
 }
 

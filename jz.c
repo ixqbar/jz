@@ -273,7 +273,6 @@ PHP_FUNCTION(jz_decrypt)
 			if (origin_data) {
 				efree(origin_data);
 			}
-			php_printf("error\n");
 			RETURN_NULL();
 		}
 	} else {

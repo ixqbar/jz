@@ -25,7 +25,6 @@
 #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
-#include "ext/standard/crc32.h"
 #include "php_jz.h"
 
 #include "jz_common.h"
@@ -151,16 +150,10 @@ PHP_FUNCTION(jz_encrypt)
 		RETURN_NULL();
 	}
 
-	int crc = 0^0xFFFFFFFF;
-	int n = encrypt_data_len;
-
-	while (n--) {
-		crc = ((crc >> 8) & 0x00FFFFFF) ^ crc32tab[(crc ^ (*encrypt_data++)) & 0xFF ];
-	}
-	crc = crc^0xFFFFFFFF;
-
-	//reset pointer to begin
-	encrypt_data -= encrypt_data_len;
+	//crc32
+	unsigned long crc;
+	crc = crc32(0L, Z_NULL, 0);
+	crc = crc32(crc, (unsigned char *)encrypt_data, encrypt_data_len);
 
 	//check to gzcompress
 	int gzip = encrypt_data_len > 500 ? 1 : 0;
@@ -264,12 +257,13 @@ PHP_FUNCTION(jz_decrypt)
 		is_zip = 1;
 	}
 
+	aes_origin_buf_len = strtoul(header_flags[4], NULL, 10);
 	size_t origin_data_size = 0 == is_zip ? strtoul(header_flags[4], NULL, 10) : strtoul(header_flags[1], NULL, 10);
 	char *origin_data = NULL;
 
 	if (is_zip) {
 		origin_data = emalloc(origin_data_size);
-		if (!origin_data || uncompress((unsigned char *)origin_data, &origin_data_size, (const unsigned char *)(aes_origin_buf + 32), aes_origin_buf_len - 32) != Z_OK) {
+		if (!origin_data || uncompress((unsigned char *)origin_data, &origin_data_size, (const unsigned char *)(aes_origin_buf + 32), aes_origin_buf_len) != Z_OK) {
 			if (origin_data) {
 				efree(origin_data);
 			}
@@ -285,17 +279,12 @@ PHP_FUNCTION(jz_decrypt)
 		RETURN_NULL();
 	}
 
-	int crc = 0^0xFFFFFFFF;
-	size_t n = origin_data_size;
+	//crc32
+	unsigned long crc;
+	crc = crc32(0L, Z_NULL, 0);
+	crc = crc32(crc, (unsigned char *)origin_data, origin_data_size);
 
-	while (n--) {
-		crc = ((crc >> 8) & 0x00FFFFFF) ^ crc32tab[(crc ^ (*origin_data++)) & 0xFF ];
-	}
-	crc = crc^0xFFFFFFFF;
-
-	origin_data -= origin_data_size;
-
-	if (crc != atoi(header_flags[2])) {
+	if (crc != strtoul(header_flags[2], NULL, 10)) {
 		efree(origin_data);
 		RETURN_NULL();
 	}

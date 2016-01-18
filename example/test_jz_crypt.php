@@ -51,7 +51,7 @@ class Service {
 		$clear_text_len = strlen($clear_text);
 		$is_gzip = strlen ( $clear_text ) > 100 ? 1 : 0;
 		$clear_text = $is_gzip ? gzcompress ( $clear_text ) : $clear_text;
-		$header = str_pad (sprintf('o,%d,%u,%d,%d,', $clear_text_len, $crc, $is_gzip, strlen($clear_text)), 32, ' ' );
+		$header = str_pad (sprintf('o,%d,%lu,%d,%d,', $clear_text_len, $crc, $is_gzip, strlen($clear_text)), 32, ' ' );
 		list ( $data, $iv ) = self::aes_encrypt ( $header . $clear_text, $key );
 		
 		return $iv . $data;
@@ -83,7 +83,7 @@ class Service {
 		if ($headers[3] === '1') {
 			$clear_text = gzuncompress($clear_text);
 		}
-		$real_crc = sprintf('%u', crc32($clear_text));
+		$real_crc = sprintf('%lu', crc32($clear_text));
 		if ($headers[2] !== $real_crc) {
 			return null;
 		}

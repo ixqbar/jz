@@ -69,6 +69,11 @@ ZEND_BEGIN_ARG_INFO_EX(arg_info_jz_decrypt, 0, 0, 2)
 	ZEND_ARG_INFO(0, decrypt_key)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arg_info_jz_trace, 0, 0, 1)
+	ZEND_ARG_INFO(0, func_name)
+ZEND_END_ARG_INFO()
+
+
 /* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION
@@ -293,6 +298,45 @@ PHP_FUNCTION(jz_decrypt)
 	efree(origin_data);
 }
 
+PHP_FUNCTION(jz_trace)
+{
+	zval *callback, *args;
+	int i = 0, argc = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z*", &callback, &args, &argc) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (!zend_is_callable(callback, 0, NULL)) {
+		RETURN_FALSE;
+	}
+
+	int paramc = 2 + argc;
+	zval *params = safe_emalloc(sizeof(zval), paramc, 0);;
+	zval retval;
+
+	ZVAL_STRING(&params[0], zend_get_executed_filename());
+	ZVAL_LONG(&params[1], zend_get_executed_lineno());
+
+	for (i = 0; i < argc; i++) {
+		ZVAL_COPY(&params[2 + i], &args[i]);
+	}
+
+	int status = call_user_function_ex(EG(function_table), NULL, callback, &retval, paramc, params, 0, NULL);
+
+	if (status == SUCCESS && !Z_ISUNDEF(retval)) {
+		RETVAL_ZVAL(&retval, 0, 0);
+	} else {
+		RETVAL_FALSE;
+	}
+
+	for (i = 0; i < paramc; i++) {
+		zval_ptr_dtor(&params[i]);
+	}
+
+	efree(params);
+}
+
 /* {{{ jz_functions[]
  *
  * Every user visible function must have an entry in jz_functions[].
@@ -301,6 +345,7 @@ const zend_function_entry jz_functions[] = {
 	PHP_FE(jz_version, NULL)
 	PHP_FE(jz_encrypt, arg_info_jz_encrypt)
 	PHP_FE(jz_decrypt, arg_info_jz_decrypt)
+	PHP_FE(jz_trace,   arg_info_jz_trace)
 	PHP_FE_END	/* Must be the last line in jz_functions[] */
 };
 /* }}} */

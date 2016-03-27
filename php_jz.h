@@ -45,6 +45,7 @@ PHP_MINFO_FUNCTION(jz);
 PHP_FUNCTION(jz_version);
 PHP_FUNCTION(jz_encrypt);
 PHP_FUNCTION(jz_decrypt);
+PHP_FUNCTION(jz_trace);
 
 /*
   	Declare any global variables you may need between the BEGIN

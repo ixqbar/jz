@@ -130,7 +130,7 @@ $aes_key  = '1234567890123456';
 
 $t = microtime(1);
 $times = 1;
-while ($times <= 10000) {
+while ($times <= 100000) {
 	$result = jz_encrypt($aes_text, $aes_key);
 	jz_decrypt($result, $aes_key);
 	$times++;
@@ -143,7 +143,7 @@ var_dump(jz_decrypt($result, $aes_key));
 
 $t = microtime(1);
 $times = 1;
-while ($times <= 10000) {
+while ($times <= 100000) {
 	$result = Service::encrypt($aes_text, $aes_key);
 	Service::decrypt($result, $aes_key);
 	$times++;

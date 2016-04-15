@@ -34,6 +34,6 @@ class JZ_Buffer() {
 	public int append(str) {}
 	public string substr(offset, length) {}
 	public string deprecated(length) {}
-	public void clear() {}mv 
+	public void clear() {} 
 }
 ```

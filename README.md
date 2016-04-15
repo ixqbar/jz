@@ -33,7 +33,7 @@ class JZ_Buffer() {
     public __construct(size) {}	
 	public int append(str) {}
 	public string substr(offset, length) {}
-	public string deprecated(length) {}
+	public string shift(length) {}
 	public void clear() {} 
 }
 ```

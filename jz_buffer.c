@@ -90,7 +90,7 @@ PHP_METHOD(jz_buffer, append) {
 	JZBuffer *buffer = jz_get_buffer_object(getThis());
 	if (buffer->length + input_len > buffer->size) {
 		buffer->size += 1024;
-		buffer->str = realloc(buffer->str, buffer->size);
+		buffer->str = erealloc(buffer->str, buffer->size);
 		memset(buffer->str + 1024, ' ', 1024);
 	}
 
@@ -128,7 +128,7 @@ PHP_METHOD(jz_buffer, substr) {
 	RETURN_STRINGL(buffer->str + offset, length);
 }
 
-PHP_METHOD(jz_buffer, deprecated) {
+PHP_METHOD(jz_buffer, shift) {
 	long length = 0;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &length) == FAILURE
@@ -166,6 +166,7 @@ PHP_METHOD(jz_buffer, __destruct) {
 	JZBuffer *buffer = jz_get_buffer_object(getThis());
 	efree(buffer->str);
 	efree(buffer);
+	buffer = NULL;
 }
 
 zend_function_entry jz_buffer_methods[] = {
@@ -173,14 +174,14 @@ zend_function_entry jz_buffer_methods[] = {
 	PHP_ME(jz_buffer, __destruct, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_DTOR)
 	PHP_ME(jz_buffer, append, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(jz_buffer, substr, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(jz_buffer, deprecated, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(jz_buffer, shift, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(jz_buffer, clear, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(jz_buffer, __toString, NULL, ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
 
 JZ_STARTUP_FUNCTION(buffer) {
-	le_jz_buf_cls = zend_register_list_destructors_ex(NULL, jz_free_buff_object, "JZ Buffer", module_number);
+	le_jz_buf_cls = zend_register_list_destructors_ex(jz_free_buff_object, NULL, "JZ Buffer", module_number);
 
 	zend_class_entry ce;
 

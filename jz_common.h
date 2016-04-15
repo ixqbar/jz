@@ -9,7 +9,7 @@
 #define EXT_JZ_JZ_COMMON_H_
 
 //版本
-#define PHP_JZ_VERSION "0.1.0"
+#define PHP_JZ_VERSION "1.0.0"
 
 #define JZ_STARTUP_FUNCTION(module)  ZEND_MINIT_FUNCTION(jz_##module)
 #define JZ_RINIT_FUNCTION(module)	 ZEND_RINIT_FUNCTION(jz_##module)

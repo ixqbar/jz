@@ -30,6 +30,7 @@
 #include "jz_common.h"
 #include "jz_mcrypt.h"
 #include "jz_data.h"
+#include "jz_buffer.h"
 #include "zlib.h"
 
 /* If you declare any globals in php_jz.h uncomment this:
@@ -85,6 +86,9 @@ PHP_MINIT_FUNCTION(jz)
 	*/
 
 	JZ_STARTUP(data);
+
+	JZ_RINIT_FUNCTION(buffer);
+	JZ_STARTUP(buffer);
 
 	return SUCCESS;
 }

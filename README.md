@@ -28,4 +28,12 @@ class JZ_Data() {
 	public array to_array() {}
 	public boolean readonly() {}   
 }
+
+class JZ_Buffer() {
+    public __construct(size) {}	
+	public int append(str) {}
+	public string substr(offset, length) {}
+	public string deprecated(length) {}
+	public void clear() {}mv 
+}
 ```

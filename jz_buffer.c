@@ -73,7 +73,6 @@ PHP_METHOD(jz_buffer, __construct) {
 		php_error_docref(NULL, E_ERROR, "malloc buffer failed");
 		RETURN_FALSE;
 	}
-	memset(buffer->str, ' ', buffer->length);
 	jz_add_buffer_object(getThis(), buffer);
 	zend_update_property_long(jz_buffer_class_entry, getThis(), ZEND_STRL("length"), buffer->length);
 }
@@ -89,10 +88,10 @@ PHP_METHOD(jz_buffer, append) {
 
 	JZBuffer *buffer = jz_get_buffer_object(getThis());
 	if (buffer->length + input_len > buffer->size) {
-		buffer->size += 1024;
+		double expend = ceil((buffer->length + input_len - buffer->size) / JZ_STRING_BUFFER_DEFAULT);
+		buffer->size += expend;
 		buffer->str = erealloc(buffer->str, buffer->size);
-		memset(buffer->str + 1024, ' ', 1024);
-	}
+	};
 
 	memcpy(buffer->str + buffer->length, input, input_len);
 	buffer->length += input_len;
@@ -150,7 +149,6 @@ PHP_METHOD(jz_buffer, shift) {
 
 PHP_METHOD(jz_buffer, clear) {
 	JZBuffer *buffer = jz_get_buffer_object(getThis());
-	memset(buffer->str, ' ', buffer->length);
 	buffer->length = 0;
 	zend_update_property_long(jz_buffer_class_entry, getThis(), ZEND_STRL("length"), buffer->length);
 }

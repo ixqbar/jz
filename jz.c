@@ -24,14 +24,16 @@
 
 #include "php.h"
 #include "php_ini.h"
+#include "ext/standard/php_rand.h"
 #include "ext/standard/info.h"
+#include "ext/standard/crc32.h"
 #include "php_jz.h"
 
 #include "jz_common.h"
-#include "jz_mcrypt.h"
 #include "jz_data.h"
 #include "jz_buffer.h"
-#include "zlib.h"
+#include "aes.c"
+#include "zlib.c"
 
 /* If you declare any globals in php_jz.h uncomment this:
 ZEND_DECLARE_MODULE_GLOBALS(jz)
@@ -154,67 +156,100 @@ PHP_FUNCTION(jz_encrypt)
 	}
 
 	if (0 == encrypt_data_len
-		|| 0 == encrypt_key_len
-		|| encrypt_key_len % 16 != 0) {
+		|| 0 == encrypt_key_len) {
 		RETURN_NULL();
 	}
 
-	//crc32
-	unsigned long crc;
-	crc = crc32(0L, Z_NULL, 0);
-	crc = crc32(crc, (unsigned char *)encrypt_data, encrypt_data_len);
+	int crc = 0^0xFFFFFFFF;
+	int n = encrypt_data_len;
+
+	while (n--) {
+		crc = ((crc >> 8) & 0x00FFFFFF) ^ crc32tab[(crc ^ (*encrypt_data++)) & 0xFF ];
+	}
+	crc = crc^0xFFFFFFFF;
+
+	//reset pointer to begin
+	encrypt_data -= encrypt_data_len;
 
 	//check to gzcompress
-	int gzip = encrypt_data_len > 500 ? 1 : 0;
+	int gzip = encrypt_data_len > 100 ? 1 : 0;
 
-	char *aes_data = NULL;
+	char *aes_data;
 	size_t aes_data_len = encrypt_data_len;
 
 	if (gzip) {
-		size_t g_l = compressBound(aes_data_len);
-		aes_data = emalloc(g_l);
-		if (!aes_data || compress((unsigned char *)aes_data, &aes_data_len, (unsigned char *)encrypt_data, encrypt_data_len) != Z_OK) {
-			if (aes_data) {
-				efree(aes_data);
-			}
+		int level = -1;
+		int encoding = 0x0f;
+		zend_string *out = php_zlib_encode(encrypt_data, encrypt_data_len, encoding, level);
+		if (!out) {
 			RETURN_NULL();
 		}
+		aes_data_len = out->len;
+		aes_data = estrndup(out->val, out->len);
+		zend_string_free(out);
 	} else {
-		aes_data = estrndup(encrypt_data, aes_data_len);
-	}
-
-	if (!aes_data) {
-		RETURN_NULL();
+		aes_data = estrndup(encrypt_data, encrypt_data_len);
 	}
 
 	//header
 	char header[33];
-	size_t i = sprintf(header, "o,%d,%lu,%d,%u,",encrypt_data_len, crc, gzip, aes_data_len);
-	for (; i < 32; i++) {
+	sprintf(header, "ok,%d,%lu,%u", gzip, aes_data_len, crc);
+	size_t i;
+	for (i = strlen(header); i < 32; i++) {
 		header[i] = ' ';
 	}
 	header[32] = '\0';
 
-	//all data
-	size_t aes_origin_buf_len = 32 + aes_data_len;
-	char * aes_origin_buf = (char *)emalloc(aes_origin_buf_len);
-	memset(aes_origin_buf, 0, aes_origin_buf_len);
-	//copy header
+	//rand iv
+	char aes_iv[17];
+	int j;
+	for (j = 0; j < 16; j++) {
+		int ch = rand() % 255;
+		aes_iv[j] = (char)ch;
+	}
+	aes_iv[16] = '\0';
+
+	int encrypt_times = (aes_data_len + 32) / 16 + 1;
+	int paddings      = 16 - (aes_data_len + 32) % 16;
+	int aes_buf_size  = (aes_data_len + 32) + paddings;
+
+	char *result = (char *)emalloc(16 + sizeof(char) * aes_buf_size);
+	memcpy(result, aes_iv, 16);
+
+	char * aes_origin_buf = (char *)emalloc(sizeof(char) * aes_buf_size);
+	memset(aes_origin_buf, 0, sizeof(char) * aes_buf_size);
 	memcpy(aes_origin_buf, header, 32);
-	//copy data
 	memcpy(aes_origin_buf + 32, aes_data, aes_data_len);
-	efree(aes_data);
 
-	size_t out_len = 0;
-	char *out_data = jz_crypt(encrypt_key, encrypt_key_len, NULL, 0, aes_origin_buf, aes_origin_buf_len, JZ_MCRYPT_TO_ENCRYPT, &out_len);
+	char * aes_finnal_buf = (char *)emalloc(sizeof(char) * aes_buf_size);
+	memset(aes_finnal_buf, 0, sizeof(char) * aes_buf_size);
 
-	efree(aes_origin_buf);
-	if (!out_data || 0 == out_len) {
+	char aes_key[17];
+	memset(aes_key, ' ', sizeof(aes_key));
+	if (encrypt_key_len < 16) {
+		memcpy(aes_key, encrypt_key, encrypt_key_len);
+	} else {
+		memcpy(aes_key, encrypt_key, 16);
+	}
+
+	aes_context aes_ctx;
+	aes_set_key((unsigned char *)aes_key, 16, &aes_ctx);
+
+	if (SUCCESS != aes_cbc_encrypt((unsigned char *)aes_origin_buf, (unsigned char *)aes_finnal_buf, encrypt_times, (unsigned char *)aes_iv, &aes_ctx)) {
+		efree(aes_data);
+		efree(aes_origin_buf);
+		efree(aes_finnal_buf);
 		RETURN_NULL();
 	}
 
-	RETVAL_STRINGL(out_data, out_len);
-	free(out_data);
+	memcpy(result + 16, aes_finnal_buf, aes_buf_size);
+
+	efree(aes_data);
+	efree(aes_origin_buf);
+	efree(aes_finnal_buf);
+
+	RETVAL_STRINGL(result, 16 + aes_buf_size);
+	efree(result);
 }
 
 
@@ -223,82 +258,114 @@ PHP_FUNCTION(jz_decrypt)
 	char *decrypt_data = NULL, *decrypt_key=NULL;
 	size_t decrypt_data_len, decrypt_key_len;
 
+	array_init(return_value);
+	add_index_bool(return_value, 0, 1);
+	add_index_string(return_value, 1, "");
+
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &decrypt_data, &decrypt_data_len, &decrypt_key, &decrypt_key_len) == FAILURE) {
-		RETURN_NULL();
+		return;
 	}
 
 	if (decrypt_data_len < 48
 		|| decrypt_data_len % 16 != 0
-		|| 0 == decrypt_key_len
-		|| decrypt_key_len % 16 != 0) {
-		RETURN_NULL();
+		|| 0 == decrypt_key_len) {
+		return;
 	}
 
 	//iv
-	char aes_iv[16];
+	char aes_iv[17];
 	memcpy(aes_iv, decrypt_data, 16);
+	aes_iv[16] = '\0';
 
-	size_t aes_origin_buf_len = 0;
-	char *aes_origin_buf = jz_crypt(decrypt_key, decrypt_key_len, aes_iv, 16, decrypt_data + 16, decrypt_data_len - 16, JZ_MCRYPT_TO_DECRYPT, &aes_origin_buf_len);
-	if (!aes_origin_buf || 0 == aes_origin_buf_len) {
-		RETURN_NULL();
+	int aes_buf_size  = decrypt_data_len - 16;
+	int decrypt_times = aes_buf_size / 16;
+
+	char *aes_finnal_buf = (char *)emalloc(sizeof(char) * aes_buf_size);
+	memset(aes_finnal_buf, 0, sizeof(char) * aes_buf_size);
+	memcpy(aes_finnal_buf, decrypt_data + 16, sizeof(char) * aes_buf_size);
+
+	char *aes_origin_buf = (char *)emalloc(sizeof(char) * aes_buf_size);
+	memset(aes_origin_buf, 0, sizeof(char) * aes_buf_size);
+
+	char aes_key[17];
+	memset(aes_key, ' ', sizeof(aes_key));
+	if (decrypt_key_len < 16) {
+		memcpy(aes_key, decrypt_key, decrypt_key_len);
+	} else {
+		memcpy(aes_key, decrypt_key, 16);
 	}
+
+	aes_context aes_ctx;
+	aes_set_key((unsigned char *)aes_key, 16, &aes_ctx);
+	if (SUCCESS != aes_cbc_decrypt((unsigned char *)aes_finnal_buf, (unsigned char *)aes_origin_buf, decrypt_times, (unsigned char *)aes_iv, &aes_ctx)) {
+		efree(aes_finnal_buf);
+		efree(aes_origin_buf);
+		return;
+	}
+
+	efree(aes_finnal_buf);
 
 	char header[33];
 	memcpy(header, aes_origin_buf, 32);
 	header[32] = '\0';
 
-	char* header_flags[5];
+	char* header_flags[4];
 	char* flags = strtok(header, ",");
 	int i;
-	for (i = 0; i < 5; i++) {
+	for (i = 0; i < 4; i++) {
 		header_flags[i] = flags;
 		flags = strtok(NULL, ",");
 	}
 
-	if (strcmp(header_flags[0], "o") != 0) {
-		free(aes_origin_buf);
-		RETURN_NULL();
+	if (strcmp(header_flags[0], "ok") != 0) {
+		efree(aes_origin_buf);
+		return;
 	}
 
 	int is_zip = 0;
-	if (atoi(header_flags[3]) == 1) {
+	if (strcmp(header_flags[1], "1") == 0) {
 		is_zip = 1;
 	}
 
-	aes_origin_buf_len = strtoul(header_flags[4], NULL, 10);
-	size_t origin_data_size = 0 == is_zip ? strtoul(header_flags[4], NULL, 10) : strtoul(header_flags[1], NULL, 10);
-	char *origin_data = NULL;
+	size_t origin_data_size = strtoul(header_flags[2], NULL, 10);
+
+	char *origin_data;
+	size_t origin_data_len = origin_data_size;
 
 	if (is_zip) {
-		origin_data = emalloc(origin_data_size);
-		if (!origin_data || uncompress((unsigned char *)origin_data, &origin_data_size, (const unsigned char *)(aes_origin_buf + 32), aes_origin_buf_len) != Z_OK) {
-			if (origin_data) {
-				efree(origin_data);
-			}
-			RETURN_NULL();
+		int encoding = 0x0f;
+		if (SUCCESS != php_zlib_decode(aes_origin_buf + 32, origin_data_size, &origin_data, &origin_data_len, encoding, 0)) {
+			efree(aes_origin_buf);
+			return;
 		}
 	} else {
-		origin_data = estrndup(aes_origin_buf + 32, origin_data_size);
+		origin_data = estrndup(aes_origin_buf + 32, origin_data_len);
 	}
 
-	free(aes_origin_buf);
+	efree(aes_origin_buf);
 
-	if (!origin_data) {
-		RETURN_NULL();
+	int crc = 0^0xFFFFFFFF;
+	size_t n = origin_data_len;
+
+	while (n--) {
+		crc = ((crc >> 8) & 0x00FFFFFF) ^ crc32tab[(crc ^ (*origin_data++)) & 0xFF ];
 	}
+	crc = crc^0xFFFFFFFF;
 
-	//crc32
-	unsigned long crc;
-	crc = crc32(0L, Z_NULL, 0);
-	crc = crc32(crc, (unsigned char *)origin_data, origin_data_size);
+	origin_data -= origin_data_len;
 
-	if (crc != strtoul(header_flags[2], NULL, 10)) {
+	//fixed 32bit crc error
+	char crc_str[1 + strlen(header_flags[3])];
+	int crc_str_len = sprintf(crc_str, "%u", crc);
+	crc_str[crc_str_len] = '\0';
+
+	if (atoi(crc_str) != atoi(header_flags[3])) {
 		efree(origin_data);
-		RETURN_NULL();
+		return;
 	}
 
-	RETVAL_STRINGL(origin_data, origin_data_size);
+	add_index_bool(return_value, 0, 0);
+	add_index_stringl(return_value, 1, origin_data, origin_data_len);
 	efree(origin_data);
 }
 

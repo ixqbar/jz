@@ -46,5 +46,5 @@ if test "$PHP_JZ" != "no"; then
   
   PHP_SUBST(JZ_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(jz, jz.c jz_mcrypt.c jz_data.c jz_buffer.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
+  PHP_NEW_EXTENSION(jz, jz.c jz_data.c jz_buffer.c, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
 fi

@@ -5,7 +5,7 @@
 string jz_version()
 
 string jz_encrypt($text, $key)
-string jz_decrypt($text, $key)
+array  jz_decrypt($text, $key)
 mixed  jz_trace($callback[, $callback_params2, $callback_params3,...])
 
 class JZ_Data() {

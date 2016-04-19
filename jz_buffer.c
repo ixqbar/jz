@@ -104,8 +104,9 @@ PHP_METHOD(jz_buffer, append) {
 PHP_METHOD(jz_buffer, substr) {
 	long offset;
 	long length = -1;
+	zend_bool remove = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|l", &offset, &length) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|lb", &offset, &length, &remove) == FAILURE) {
 		RETURN_FALSE;
 	}
 
@@ -122,6 +123,14 @@ PHP_METHOD(jz_buffer, substr) {
 	if (offset + length > buffer->length) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "offset(%ld,%ld) out of bounds.", offset, length);
 		RETURN_FALSE;
+	}
+
+	if (remove) {
+		RETVAL_STRINGL(buffer->str + offset, length);
+		memcpy(buffer->str + offset, buffer->str + offset + length, buffer->length - length - offset);
+		buffer->length -= length;
+		zend_update_property_long(jz_buffer_class_entry, getThis(), ZEND_STRL("length"), buffer->length);
+		return;
 	}
 
 	RETURN_STRINGL(buffer->str + offset, length);

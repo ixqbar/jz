@@ -32,8 +32,8 @@ static size_t get_buffer_str(JZBuffer *buffer, char *result, size_t expect_len, 
 	}
 
 	int stop_index = buffer->size - 1;
-	if (buffer->read_index + final_len <= buffer->size + 1) {
-		stop_index = buffer->read_index + final_len - 1;
+	if (buffer->read_index + final_len <= buffer->size) {
+		stop_index = buffer->size + final_len - 1;
 	}
 
 	size_t old_read_index = buffer->read_index;

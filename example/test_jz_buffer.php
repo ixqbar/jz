@@ -3,39 +3,46 @@
 
 $buffer_handle = new JZ_Buffer(5);
 
-var_dump($buffer_handle->append('123'));
-var_dump($buffer_handle->length);
+echo "append:" . $buffer_handle->append('01234') . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
+echo PHP_EOL;
 
-var_dump($buffer_handle->append('123'));
-var_dump($buffer_handle->length);
+echo "append:" . $buffer_handle->append('ABCDEFG') . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
+echo PHP_EOL;
 
-var_dump((string)$buffer_handle);
-var_dump($buffer_handle->substr(-4));
-var_dump($buffer_handle->substr(1, 2));
-var_dump($buffer_handle->substr(2));
+echo "get2:" . $buffer_handle->get(2) . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
+echo PHP_EOL;
 
-var_dump($buffer_handle->shift(2));
+echo "get2 and remove:" . $buffer_handle->get(2, 1) . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
+echo PHP_EOL;
 
-var_dump((string)$buffer_handle);
+echo "get all and remove:" . $buffer_handle->get(0, 1) . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
 
-var_dump($buffer_handle->length);
+echo "append:" . $buffer_handle->append('HIJKLMNOPQRST01234567') . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
+echo PHP_EOL;
 
-$buffer_handle->clear();
-var_dump((string)$buffer_handle);
-var_dump($buffer_handle->length);
+echo "get all:" . $buffer_handle->get() . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
+echo PHP_EOL;
 
-echo "\n\ntest remove\n\n";
+echo "shift 4:" . $buffer_handle->shift(4) . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
+echo PHP_EOL;
 
-var_dump($buffer_handle->append('0123456789'));
-var_dump($buffer_handle->substr(-4, 3, 1));
-var_dump((string)$buffer_handle);
-var_dump($buffer_handle->length);
-
-var_dump($buffer_handle->append('abc'));
-var_dump((string)$buffer_handle);
-var_dump($buffer_handle->length);
-
-
-
-
+echo "get all:" . $buffer_handle->get() . PHP_EOL;
+echo "length:" . $buffer_handle->length . PHP_EOL;
+echo "size:" . $buffer_handle->size . PHP_EOL;
 

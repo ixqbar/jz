@@ -32,7 +32,7 @@ class JZ_Data() {
 class JZ_Buffer() {
     public __construct(size) {}	
 	public int append(str) {}
-	public string substr(offset, length[, remove]) {}
+	public string get([length, remove]) {}
 	public string shift(length) {}
 	public void clear() {} 
 }

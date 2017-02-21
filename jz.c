@@ -48,6 +48,8 @@ static int le_jz;
 	#define JZ_JIEBA_DICT_NAME "jieba.dict.utf8"
 	#define JZ_JIEBA_DICT_HMM_NAME "hmm_model.utf8"
 	#define JZ_JIEBA_USER_DICT_NAME "user.dict.utf8"
+	#define JZ_JIEBA_IDF_NAME "idf.utf8"
+	#define JZ_JIEBA_STP_WORDS_NAME "stop_words.utf8"
 
 	ZEND_DECLARE_MODULE_GLOBALS(jz)
 
@@ -97,15 +99,26 @@ PHP_MINIT_FUNCTION(jz)
 	}
 
 	size_t jz_dict_path_len = strlen(JZ_G(dict_path));
-	char dict_path[BUFSIZE], dict_hmm_path[BUFSIZE], user_dict_path[BUFSIZE];
+
+	char dict_path[BUFSIZE];
+	char dict_hmm_path[BUFSIZE];
+	char user_dict_path[BUFSIZE];
+	char idf_path[BUFSIZE];
+	char stop_words_path[BUFSIZE];
+
 	memcpy(dict_path, JZ_G(dict_path), jz_dict_path_len);
 	memcpy(dict_hmm_path, JZ_G(dict_path), jz_dict_path_len);
 	memcpy(user_dict_path, JZ_G(dict_path), jz_dict_path_len);
+	memcpy(idf_path, JZ_G(dict_path), jz_dict_path_len);
+	memcpy(stop_words_path, JZ_G(dict_path), jz_dict_path_len);
 
 	if (dict_path[jz_dict_path_len - 1] != '/') {
 		dict_path[jz_dict_path_len] = '/';
 		dict_hmm_path[jz_dict_path_len] = '/';
 		user_dict_path[jz_dict_path_len] = '/';
+		idf_path[jz_dict_path_len] = '/';
+		stop_words_path[jz_dict_path_len] = '/';
+
 		jz_dict_path_len += 1;
 	}
 
@@ -118,14 +131,23 @@ PHP_MINIT_FUNCTION(jz)
 	memcpy(user_dict_path + jz_dict_path_len, JZ_JIEBA_USER_DICT_NAME, sizeof(JZ_JIEBA_USER_DICT_NAME));
 	user_dict_path[jz_dict_path_len + sizeof(JZ_JIEBA_USER_DICT_NAME)] = 0;
 
+	memcpy(idf_path + jz_dict_path_len, JZ_JIEBA_IDF_NAME, sizeof(JZ_JIEBA_IDF_NAME));
+	idf_path[jz_dict_path_len + sizeof(JZ_JIEBA_IDF_NAME)] = 0;
+
+	memcpy(stop_words_path + jz_dict_path_len, JZ_JIEBA_STP_WORDS_NAME, sizeof(JZ_JIEBA_STP_WORDS_NAME));
+	stop_words_path[jz_dict_path_len + sizeof(JZ_JIEBA_STP_WORDS_NAME)] = 0;
+
+
 	if (access(dict_path, R_OK|F_OK) != 0
 		|| access(dict_hmm_path, R_OK|F_OK) != 0
-		|| access(user_dict_path, R_OK|F_OK) != 0) {
+		|| access(user_dict_path, R_OK|F_OK) != 0
+		|| access(idf_path, R_OK|F_OK) != 0
+		|| access(stop_words_path, R_OK|F_OK) != 0) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Please init your jieba dict path in php.ini");
 		return FAILURE;
 	}
 
-	JZ_G(jieba) = NewJieba(dict_path, dict_hmm_path,user_dict_path);
+	JZ_G(jieba) = NewJieba(dict_path, dict_hmm_path,user_dict_path, idf_path, stop_words_path);
 #endif
 
 	JZ_STARTUP(data);

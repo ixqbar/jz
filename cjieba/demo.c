@@ -12,10 +12,10 @@ const char *USER_DICT = "./dict/user.dict.utf8";
 
 const char *sentence = "小明硕士毕业于中国科学院计算所，后在日本京都大学深造";
 
+Jieba handle;
+
 void CutDemo() {
 	printf("CutDemo:\n");
-
-	Jieba handle = NewJieba(DICT_PATH, HMM_PATH, USER_DICT);
 
 	CJiebaWord *words = Cut(handle, sentence, strlen(sentence));
 	CJiebaWord *x;
@@ -24,29 +24,22 @@ void CutDemo() {
 	}
 	printf("\n");
 	FreeWords(words);
-	FreeJieba(handle);
 }
 
 void CutForSearchDemo() {
 	printf("CutForSearchDemo:\n");
 
-	Jieba handle = NewJieba(DICT_PATH, HMM_PATH, USER_DICT);
-
 	CJiebaWord *words = CutForSearch(handle, sentence, strlen(sentence));
 	CJiebaWord *x;
-
 	for (x = words; x->word; x++) {
 		printf("%.*s/", (int) x->len, x->word);
 	}
 	printf("\n");
 	FreeWords(words);
-	FreeJieba(handle);
 }
 
 void CutWithoutTagNameDemo() {
 	printf("CutWithoutTagNameDemo:\n");
-
-	Jieba handle = NewJieba(DICT_PATH, HMM_PATH, USER_DICT);
 
 	CJiebaWord *words = CutWithoutTagName(handle, sentence, strlen(sentence), "x");
 	CJiebaWord *x;
@@ -55,29 +48,26 @@ void CutWithoutTagNameDemo() {
 	}
 	printf("\n");
 	FreeWords(words);
-	FreeJieba(handle);
 }
 
 void ExtractDemo() {
 	printf("ExtractDemo:\n");
 
-	Extractor handle = NewExtractor(DICT_PATH, HMM_PATH, IDF_PATH, STOP_WORDS_PATH, USER_DICT);
+	Extractor ehandle = NewExtractor(DICT_PATH, HMM_PATH, IDF_PATH, STOP_WORDS_PATH, USER_DICT);
 
 	size_t top_n = 200;
-	CJiebaWord *words = Extract(handle, sentence, strlen(sentence), top_n);
+	CJiebaWord *words = Extract(ehandle, sentence, strlen(sentence), top_n);
 	CJiebaWord *x;
 	for (x = words; x->word; x++) {
 		printf("%.*s/", (int) x->len, x->word);
 	}
 	printf("\n");
 	FreeWords(words);
-	FreeExtractor(handle);
+	FreeExtractor(ehandle);
 }
 
 void UserWordDemo() {
 	printf("UserWordDemo:\n");
-
-	Jieba handle = NewJieba(DICT_PATH, HMM_PATH, USER_DICT);
 
 	CJiebaWord *words = Cut(handle, sentence, strlen(sentence));
 	CJiebaWord *x;
@@ -94,14 +84,18 @@ void UserWordDemo() {
 	}
 	printf("\n");
 	FreeWords(words);
-	FreeJieba(handle);
 }
 
 int main(int argc, char **argv) {
+	handle = NewJieba(DICT_PATH, HMM_PATH, USER_DICT, IDF_PATH, STOP_WORDS_PATH);
+
 	CutDemo();
 	CutForSearchDemo();
 	CutWithoutTagNameDemo();
 	ExtractDemo();
 	UserWordDemo();
+
+	FreeJieba(handle);
+
 	return 0;
 }

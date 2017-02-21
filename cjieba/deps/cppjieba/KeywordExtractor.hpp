@@ -3,10 +3,12 @@
 
 #include <cmath>
 #include <set>
-#include "Jieba.hpp"
+#include "MixSegment.hpp"
 
 namespace cppjieba {
+
 using namespace limonp;
+using namespace std;
 
 /*utf8*/
 class KeywordExtractor {
@@ -34,13 +36,6 @@ class KeywordExtractor {
     LoadIdfDict(idfPath);
     LoadStopWordDict(stopWordPath);
   }
-  KeywordExtractor(const Jieba& jieba, 
-        const string& idfPath, 
-        const string& stopWordPath) 
-    : segment_(jieba.GetDictTrie(), jieba.GetHMMModel()) {
-    LoadIdfDict(idfPath);
-    LoadStopWordDict(stopWordPath);
-  }
   ~KeywordExtractor() {
   }
 
@@ -62,7 +57,7 @@ class KeywordExtractor {
 
   void Extract(const string& sentence, vector<Word>& keywords, size_t topN) const {
     vector<string> words;
-    segment_.Cut(sentence, words);
+    segment_.Cut(sentence, words, true);
 
     map<string, Word> wordmap;
     size_t offset = 0;
@@ -136,14 +131,6 @@ class KeywordExtractor {
     assert(stopWords_.size());
   }
 
-  bool IsSingleWord(const string& str) const {
-    Unicode unicode;
-    TransCode::Decode(str, unicode);
-    if (unicode.size() == 1)
-      return true;
-    return false;
-  }
-
   static bool Compare(const Word& lhs, const Word& rhs) {
     return lhs.weight > rhs.weight;
   }
@@ -153,10 +140,10 @@ class KeywordExtractor {
   double idfAverage_;
 
   unordered_set<string> stopWords_;
-}; // class Jieba
+}; // class KeywordExtractor
 
 inline ostream& operator << (ostream& os, const KeywordExtractor::Word& word) {
-  return os << word.word << '|' << word.offsets << '|' << word.weight; 
+  return os << "{\"word\": \"" << word.word << "\", \"offset\": " << word.offsets << ", \"weight\": " << word.weight << "}"; 
 }
 
 } // namespace cppjieba

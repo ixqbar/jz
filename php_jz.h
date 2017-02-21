@@ -47,20 +47,14 @@ PHP_FUNCTION(jz_encrypt);
 PHP_FUNCTION(jz_decrypt);
 PHP_FUNCTION(jz_trace);
 
-/*
-  	Declare any global variables you may need between the BEGIN
-	and END macros here:
+#ifdef JZ_USE_CJIEBA
+	#include "jieba.h"
+	ZEND_BEGIN_MODULE_GLOBALS(jz)
+		Jieba jieba;
+		char *dict_path;
+	ZEND_END_MODULE_GLOBALS(jz)
+#endif
 
-ZEND_BEGIN_MODULE_GLOBALS(jz)
-	zend_long  global_value;
-	char *global_string;
-ZEND_END_MODULE_GLOBALS(jz)
-*/
-
-/* Always refer to the globals in your function as JZ_G(variable).
-   You are encouraged to rename these macros something shorter, see
-   examples in any other php module directory.
-*/
 #define JZ_G(v) ZEND_MODULE_GLOBALS_ACCESSOR(jz, v)
 
 #if defined(ZTS) && defined(COMPILE_DL_JZ)

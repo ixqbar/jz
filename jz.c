@@ -35,32 +35,37 @@
 #include "aes.c"
 #include "zlib.c"
 
-/* If you declare any globals in php_jz.h uncomment this:
-ZEND_DECLARE_MODULE_GLOBALS(jz)
-*/
-
-/* True global resources - no need for thread safety here */
 static int le_jz;
 
-/* {{{ PHP_INI
- */
-/* Remove comments and fill if you need to have entries in php.ini
-PHP_INI_BEGIN()
-    STD_PHP_INI_ENTRY("jz.global_value",      "42", PHP_INI_ALL, OnUpdateLong, global_value, zend_jz_globals, jz_globals)
-    STD_PHP_INI_ENTRY("jz.global_string", "foobar", PHP_INI_ALL, OnUpdateString, global_string, zend_jz_globals, jz_globals)
-PHP_INI_END()
-*/
-/* }}} */
+#ifdef JZ_USE_CJIEBA
 
-/* {{{ php_jz_init_globals
- */
-/* Uncomment this function if you have INI entries
-static void php_jz_init_globals(zend_jz_globals *jz_globals)
-{
-	jz_globals->global_value = 0;
-	jz_globals->global_string = NULL;
-}
-*/
+	#include <unistd.h>
+
+	#ifndef BUFSIZE
+		#define BUFSIZE 2048
+	#endif
+
+	#define JZ_JIEBA_DICT_NAME "jieba.dict.utf8"
+	#define JZ_JIEBA_DICT_HMM_NAME "hmm_model.utf8"
+	#define JZ_JIEBA_USER_DICT_NAME "user.dict.utf8"
+
+	ZEND_DECLARE_MODULE_GLOBALS(jz)
+
+	PHP_INI_BEGIN()
+		STD_PHP_INI_ENTRY("jz.dict_path", "", PHP_INI_SYSTEM, OnUpdateString, dict_path, zend_jz_globals, jz_globals)
+	PHP_INI_END()
+
+	static void php_jz_init_globals(zend_jz_globals *jz_globals)
+	{
+		jz_globals->jieba = NULL;
+		jz_globals->dict_path = NULL;
+	}
+
+	ZEND_BEGIN_ARG_INFO_EX(arg_info_jz_jieba, 0, 0, 1)
+		ZEND_ARG_INFO(0, sentence)
+	ZEND_END_ARG_INFO()
+#endif
+
 
 ZEND_BEGIN_ARG_INFO_EX(arg_info_jz_encrypt, 0, 0, 2)
 	ZEND_ARG_INFO(0, encrypt_str)
@@ -83,13 +88,47 @@ ZEND_END_ARG_INFO()
  */
 PHP_MINIT_FUNCTION(jz)
 {
-	/* If you have INI entries, uncomment these lines
+#ifdef JZ_USE_CJIEBA
 	REGISTER_INI_ENTRIES();
-	*/
+
+	if ((JZ_G(dict_path) == "" || JZ_G(dict_path) == NULL)){
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Please init your jieba dict path in php.ini");
+		return FAILURE;
+	}
+
+	size_t jz_dict_path_len = strlen(JZ_G(dict_path));
+	char dict_path[BUFSIZE], dict_hmm_path[BUFSIZE], user_dict_path[BUFSIZE];
+	memcpy(dict_path, JZ_G(dict_path), jz_dict_path_len);
+	memcpy(dict_hmm_path, JZ_G(dict_path), jz_dict_path_len);
+	memcpy(user_dict_path, JZ_G(dict_path), jz_dict_path_len);
+
+	if (dict_path[jz_dict_path_len - 1] != '/') {
+		dict_path[jz_dict_path_len] = '/';
+		dict_hmm_path[jz_dict_path_len] = '/';
+		user_dict_path[jz_dict_path_len] = '/';
+		jz_dict_path_len += 1;
+	}
+
+	memcpy(dict_path + jz_dict_path_len, JZ_JIEBA_DICT_NAME, sizeof(JZ_JIEBA_DICT_NAME));
+	dict_path[jz_dict_path_len + sizeof(JZ_JIEBA_DICT_NAME)] = 0;
+
+	memcpy(dict_hmm_path + jz_dict_path_len, JZ_JIEBA_DICT_HMM_NAME, sizeof(JZ_JIEBA_DICT_HMM_NAME));
+	dict_hmm_path[jz_dict_path_len + sizeof(JZ_JIEBA_DICT_HMM_NAME)] = 0;
+
+	memcpy(user_dict_path + jz_dict_path_len, JZ_JIEBA_USER_DICT_NAME, sizeof(JZ_JIEBA_USER_DICT_NAME));
+	user_dict_path[jz_dict_path_len + sizeof(JZ_JIEBA_USER_DICT_NAME)] = 0;
+
+	if (access(dict_path, R_OK|F_OK) != 0
+		|| access(dict_hmm_path, R_OK|F_OK) != 0
+		|| access(user_dict_path, R_OK|F_OK) != 0) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Please init your jieba dict path in php.ini");
+		return FAILURE;
+	}
+
+	JZ_G(jieba) = NewJieba(dict_path, dict_hmm_path,user_dict_path);
+#endif
 
 	JZ_STARTUP(data);
-
-	JZ_RINIT_FUNCTION(buffer);
 	JZ_STARTUP(buffer);
 
 	return SUCCESS;
@@ -100,9 +139,12 @@ PHP_MINIT_FUNCTION(jz)
  */
 PHP_MSHUTDOWN_FUNCTION(jz)
 {
-	/* uncomment this line if you have INI entries
+#ifdef JZ_USE_CJIEBA
 	UNREGISTER_INI_ENTRIES();
-	*/
+
+	FreeJieba(JZ_G(jieba));
+#endif
+
 	return SUCCESS;
 }
 /* }}} */
@@ -408,6 +450,28 @@ PHP_FUNCTION(jz_trace)
 	efree(params);
 }
 
+#ifdef JZ_USE_CJIEBA
+PHP_FUNCTION(jz_jieba)
+{
+	char *sentence = NULL;
+	size_t sentence_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &sentence, &sentence_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	array_init(return_value);
+	CJiebaWord *words = CutForSearch(JZ_G(jieba), sentence, sentence_len);
+	CJiebaWord *x;
+
+	for (x = words; x && x->word; x++) {
+		php_printf("%.*s\n", (int)x->len, x->word);
+		add_next_index_stringl(return_value, x->word, x->len);
+	}
+	FreeWords(words);
+}
+#endif
+
 /* {{{ jz_functions[]
  *
  * Every user visible function must have an entry in jz_functions[].
@@ -417,6 +481,9 @@ const zend_function_entry jz_functions[] = {
 	PHP_FE(jz_encrypt, arg_info_jz_encrypt)
 	PHP_FE(jz_decrypt, arg_info_jz_decrypt)
 	PHP_FE(jz_trace,   arg_info_jz_trace)
+#ifdef JZ_USE_CJIEBA
+	PHP_FE(jz_jieba,   arg_info_jz_jieba)
+#endif
 	PHP_FE_END	/* Must be the last line in jz_functions[] */
 };
 /* }}} */

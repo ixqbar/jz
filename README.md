@@ -4,9 +4,10 @@
 ```php
 string jz_version()
 
-string jz_encrypt($text, $key)
-array  jz_decrypt($text, $key)
+string jz_encrypt(string $text, string $key)
+array  jz_decrypt(string $text, string $key)
 mixed  jz_trace($callback[, $callback_params2, $callback_params3,...])
+array  jz_jieba(string $text)
 
 class JZ_Data() {
     public __construct($data, $readonly=true) {}

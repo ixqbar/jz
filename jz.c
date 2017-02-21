@@ -465,7 +465,6 @@ PHP_FUNCTION(jz_jieba)
 	CJiebaWord *x;
 
 	for (x = words; x && x->word; x++) {
-		php_printf("%.*s\n", (int)x->len, x->word);
 		add_next_index_stringl(return_value, x->word, x->len);
 	}
 	FreeWords(words);

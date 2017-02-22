@@ -140,7 +140,6 @@ PHP_MINIT_FUNCTION(jz)
 	memcpy(stop_words_path + jz_dict_path_len, JZ_JIEBA_STP_WORDS_NAME, sizeof(JZ_JIEBA_STP_WORDS_NAME));
 	stop_words_path[jz_dict_path_len + sizeof(JZ_JIEBA_STP_WORDS_NAME)] = 0;
 
-
 	if (access(dict_path, R_OK|F_OK) != 0
 		|| access(dict_hmm_path, R_OK|F_OK) != 0
 		|| access(user_dict_path, R_OK|F_OK) != 0
@@ -205,9 +204,9 @@ PHP_MINFO_FUNCTION(jz)
 	php_info_print_table_row(2, "version", PHP_JZ_VERSION);
 	php_info_print_table_end();
 
-	/* Remove comments if you have entries in php.ini
+#ifdef JZ_USE_CJIEBA
 	DISPLAY_INI_ENTRIES();
-	*/
+#endif
 }
 /* }}} */
 

@@ -50,6 +50,7 @@ PHP_FUNCTION(jz_trace);
 #ifdef JZ_USE_CJIEBA
 	#include "jieba.h"
 	ZEND_BEGIN_MODULE_GLOBALS(jz)
+		Extractor extractor;
 		Jieba jieba;
 		char *dict_path;
 	ZEND_END_MODULE_GLOBALS(jz)

@@ -1,5 +1,5 @@
 
-##Jz (only support php7 or later)
+### Jz (only support php7 or later)
 
 ```php
 string jz_version()
@@ -7,7 +7,7 @@ string jz_version()
 string jz_encrypt(string $text, string $key)
 array  jz_decrypt(string $text, string $key)
 mixed  jz_trace($callback[, $callback_params2, $callback_params3,...])
-array  jz_jieba(string $text)
+array  jz_jieba(string $text, bool use_extract = false, long extract_limit = 10)
 
 class JZ_Data() {
     public __construct($data, $readonly=true) {}
@@ -38,3 +38,35 @@ class JZ_Buffer() {
 	public void clear() {} 
 }
 ```
+
+### install
+```
+git clone https://github.com/jonnywang/jz.git
+cd jz/cjieba
+make
+
+cd ..
+phpize
+./configure --enable-cjieba
+make
+make install
+```
+* --enable-cjieba 可选
+* jieba more detail please visit https://github.com/yanyiwu/cppjieba
+
+### jz_jieba example
+```
+$result = jz_jieba('小明硕士毕业于中国科学院计算所，后在日本京都大学深造');
+print_r($result);
+
+$result = jz_jieba('小明硕士毕业于中国科学院计算所，后在日本京都大学深造', true, 6);
+print_r($result);
+
+$result = jz_jieba('他心理健康');
+print_r($result);
+```
+
+### contact
+更多疑问请+qq群 233415606 or [website http://www.hnphper.com](http://www.hnphper.com)
+
+

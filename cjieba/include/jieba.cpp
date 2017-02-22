@@ -113,7 +113,7 @@ Extractor NewExtractor(const char* dict_path,
 					   const char* idf_path,
 					   const char* stop_word_path,
 					   const char* user_dict_path) {
-	Extractor handle = (Extractor) (new cppjieba::KeywordExtractor(dict_path,hmm_path, idf_path, stop_word_path, user_dict_path));
+	Extractor handle = (Extractor) (new cppjieba::KeywordExtractor(dict_path, hmm_path, idf_path, stop_word_path, user_dict_path));
 	return handle;
 }
 

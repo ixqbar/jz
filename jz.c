@@ -60,11 +60,14 @@ static int le_jz;
 	static void php_jz_init_globals(zend_jz_globals *jz_globals)
 	{
 		jz_globals->jieba = NULL;
+		jz_globals->extractor = NULL;
 		jz_globals->dict_path = NULL;
 	}
 
-	ZEND_BEGIN_ARG_INFO_EX(arg_info_jz_jieba, 0, 0, 1)
+	ZEND_BEGIN_ARG_INFO_EX(arg_info_jz_jieba, 0, 0, 3)
 		ZEND_ARG_INFO(0, sentence)
+		ZEND_ARG_INFO(0, extract)
+		ZEND_ARG_INFO(0, extract_limit)
 	ZEND_END_ARG_INFO()
 #endif
 
@@ -147,7 +150,9 @@ PHP_MINIT_FUNCTION(jz)
 		return FAILURE;
 	}
 
-	JZ_G(jieba) = NewJieba(dict_path, dict_hmm_path,user_dict_path, idf_path, stop_words_path);
+	JZ_G(jieba) = NewJieba(dict_path, dict_hmm_path, user_dict_path, idf_path, stop_words_path);
+	JZ_G(extractor) = NewExtractor(dict_path, dict_hmm_path, idf_path, stop_words_path, user_dict_path);
+
 #endif
 
 	JZ_STARTUP(data);
@@ -165,6 +170,7 @@ PHP_MSHUTDOWN_FUNCTION(jz)
 	UNREGISTER_INI_ENTRIES();
 
 	FreeJieba(JZ_G(jieba));
+	FreeExtractor(JZ_G(extractor));
 #endif
 
 	return SUCCESS;
@@ -477,17 +483,31 @@ PHP_FUNCTION(jz_jieba)
 {
 	char *sentence = NULL;
 	size_t sentence_len;
+	zend_bool use_extract = 0;
+	zend_long extract_limit = 10;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &sentence, &sentence_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|bl", &sentence, &sentence_len, &use_extract, &extract_limit) == FAILURE
+		|| extract_limit <= 0) {
 		RETURN_FALSE;
 	}
 
-	array_init(return_value);
-	CJiebaWord *words = CutForSearch(JZ_G(jieba), sentence, sentence_len);
+	CJiebaWord *words;
 	CJiebaWord *x;
 
+	array_init(return_value);
+	if (use_extract) {
+		words = Extract(JZ_G(extractor), sentence, sentence_len, extract_limit);
+	} else {
+		words = CutForSearch(JZ_G(jieba), sentence, sentence_len);
+	}
+
 	for (x = words; x && x->word; x++) {
+		if (use_extract
+			&& extract_limit <= 0) {
+			break;
+		}
 		add_next_index_stringl(return_value, x->word, x->len);
+		extract_limit--;
 	}
 	FreeWords(words);
 }

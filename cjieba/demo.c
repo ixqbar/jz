@@ -55,7 +55,7 @@ void ExtractDemo() {
 
 	Extractor ehandle = NewExtractor(DICT_PATH, HMM_PATH, IDF_PATH, STOP_WORDS_PATH, USER_DICT);
 
-	size_t top_n = 200;
+	size_t top_n = 5;
 	CJiebaWord *words = Extract(ehandle, sentence, strlen(sentence), top_n);
 	CJiebaWord *x;
 	for (x = words; x->word; x++) {

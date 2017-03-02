@@ -8,6 +8,7 @@ string jz_encrypt(string $text, string $key)
 array  jz_decrypt(string $text, string $key)
 mixed  jz_trace($callback[, $callback_params2, $callback_params3,...])
 array  jz_jieba(string $text, bool use_extract = false, long extract_limit = 10)
+string jz_rc4(string $text, string $key)
 
 class JZ_Data() {
     public __construct($data, $readonly=true) {}
@@ -54,7 +55,14 @@ make install
 * --enable-jieba 可选
 * jieba more detail please visit https://github.com/yanyiwu/cppjieba
 
-### jz_jieba example
+### php.ini
+```
+extension=jz.so 
+jz.enable_jieba=1
+jz.dict_path=/Users/xingqiba/data/softs/jz/cjieba/dict    #指向jz库dict目录
+```
+
+### example
 ```
 $result = jz_jieba('小明硕士毕业于中国科学院计算所，后在日本京都大学深造');
 print_r($result);
@@ -65,6 +73,7 @@ print_r($result);
 $result = jz_jieba('他心理健康');
 print_r($result);
 ```
+ * 更新请参考example目录
 
 ### contact
 更多疑问请+qq群 233415606 or [website http://www.hnphper.com](http://www.hnphper.com)

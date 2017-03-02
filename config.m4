@@ -17,8 +17,8 @@ PHP_ARG_ENABLE(jz, whether to enable jz support,
 Make sure that the comment is aligned:
 [  --enable-jz           Enable jz support])
 
-PHP_ARG_ENABLE(cjieba, enable cjieba support,
-[  --enable-cjieba       Do you have cjieba?], no, no)
+PHP_ARG_ENABLE(jieba, enable cjieba support,
+[  --enable-jieba       Do you have cjieba?], no, no)
 
 if test "$PHP_JZ" != "no"; then
   dnl Write more examples of tests here...
@@ -43,8 +43,8 @@ if test "$PHP_JZ" != "no"; then
      AC_MSG_ERROR([Please reinstall the jz distribution])
   fi
   
-  if test "$PHP_CJIEBA" = "yes"; then
-     AC_DEFINE(JZ_USE_CJIEBA, 1, [use cjieba])
+  if test "$PHP_JIEBA" = "yes"; then
+     AC_DEFINE(JZ_USE_JIEBA, 1, [use jieba])
      PHP_ADD_INCLUDE("./cjieba/include")
      PHP_ADD_LIBRARY_WITH_PATH(jieba, "./cjieba/lib", JZ_SHARED_LIBADD)
   fi

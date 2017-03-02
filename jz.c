@@ -37,7 +37,7 @@
 
 static int le_jz;
 
-#ifdef JZ_USE_CJIEBA
+#ifdef JZ_USE_JIEBA
 
 	#include <unistd.h>
 
@@ -54,11 +54,13 @@ static int le_jz;
 	ZEND_DECLARE_MODULE_GLOBALS(jz)
 
 	PHP_INI_BEGIN()
-		STD_PHP_INI_ENTRY("jz.dict_path", "", PHP_INI_SYSTEM, OnUpdateString, dict_path, zend_jz_globals, jz_globals)
+		STD_PHP_INI_ENTRY("jz.enable_jieba", "0", PHP_INI_SYSTEM, OnUpdateBool,   enable_jieba, zend_jz_globals, jz_globals)
+		STD_PHP_INI_ENTRY("jz.dict_path",    "",  PHP_INI_SYSTEM, OnUpdateString, dict_path,    zend_jz_globals, jz_globals)
 	PHP_INI_END()
 
 	static void php_jz_init_globals(zend_jz_globals *jz_globals)
 	{
+		jz_globals->enable_jieba = 0;
 		jz_globals->jieba = NULL;
 		jz_globals->extractor = NULL;
 		jz_globals->dict_path = NULL;
@@ -93,65 +95,66 @@ ZEND_END_ARG_INFO()
  */
 PHP_MINIT_FUNCTION(jz)
 {
-#ifdef JZ_USE_CJIEBA
+#ifdef JZ_USE_JIEBA
 	REGISTER_INI_ENTRIES();
 
-	if ((JZ_G(dict_path) == "" || JZ_G(dict_path) == NULL)){
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Please init your jieba dict path in php.ini");
-		return FAILURE;
+	if (JZ_G(enable_jieba) == 1) {
+		if (JZ_G(dict_path) == "" || JZ_G(dict_path) == NULL) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Please init your jieba dict path in php.ini");
+			return FAILURE;
+		}
+
+		size_t jz_dict_path_len = strlen(JZ_G(dict_path));
+
+		char dict_path[BUFSIZE];
+		char dict_hmm_path[BUFSIZE];
+		char user_dict_path[BUFSIZE];
+		char idf_path[BUFSIZE];
+		char stop_words_path[BUFSIZE];
+
+		memcpy(dict_path, JZ_G(dict_path), jz_dict_path_len);
+		memcpy(dict_hmm_path, JZ_G(dict_path), jz_dict_path_len);
+		memcpy(user_dict_path, JZ_G(dict_path), jz_dict_path_len);
+		memcpy(idf_path, JZ_G(dict_path), jz_dict_path_len);
+		memcpy(stop_words_path, JZ_G(dict_path), jz_dict_path_len);
+
+		if (dict_path[jz_dict_path_len - 1] != '/') {
+			dict_path[jz_dict_path_len] = '/';
+			dict_hmm_path[jz_dict_path_len] = '/';
+			user_dict_path[jz_dict_path_len] = '/';
+			idf_path[jz_dict_path_len] = '/';
+			stop_words_path[jz_dict_path_len] = '/';
+
+			jz_dict_path_len += 1;
+		}
+
+		memcpy(dict_path + jz_dict_path_len, JZ_JIEBA_DICT_NAME, sizeof(JZ_JIEBA_DICT_NAME));
+		dict_path[jz_dict_path_len + sizeof(JZ_JIEBA_DICT_NAME)] = 0;
+
+		memcpy(dict_hmm_path + jz_dict_path_len, JZ_JIEBA_DICT_HMM_NAME, sizeof(JZ_JIEBA_DICT_HMM_NAME));
+		dict_hmm_path[jz_dict_path_len + sizeof(JZ_JIEBA_DICT_HMM_NAME)] = 0;
+
+		memcpy(user_dict_path + jz_dict_path_len, JZ_JIEBA_USER_DICT_NAME, sizeof(JZ_JIEBA_USER_DICT_NAME));
+		user_dict_path[jz_dict_path_len + sizeof(JZ_JIEBA_USER_DICT_NAME)] = 0;
+
+		memcpy(idf_path + jz_dict_path_len, JZ_JIEBA_IDF_NAME, sizeof(JZ_JIEBA_IDF_NAME));
+		idf_path[jz_dict_path_len + sizeof(JZ_JIEBA_IDF_NAME)] = 0;
+
+		memcpy(stop_words_path + jz_dict_path_len, JZ_JIEBA_STP_WORDS_NAME, sizeof(JZ_JIEBA_STP_WORDS_NAME));
+		stop_words_path[jz_dict_path_len + sizeof(JZ_JIEBA_STP_WORDS_NAME)] = 0;
+
+		if (access(dict_path, R_OK|F_OK) != 0
+			|| access(dict_hmm_path, R_OK|F_OK) != 0
+			|| access(user_dict_path, R_OK|F_OK) != 0
+			|| access(idf_path, R_OK|F_OK) != 0
+			|| access(stop_words_path, R_OK|F_OK) != 0) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Please init your jieba dict path in php.ini");
+			return FAILURE;
+		}
+
+		JZ_G(jieba) = NewJieba(dict_path, dict_hmm_path, user_dict_path, idf_path, stop_words_path);
+		JZ_G(extractor) = NewExtractor(dict_path, dict_hmm_path, idf_path, stop_words_path, user_dict_path);
 	}
-
-	size_t jz_dict_path_len = strlen(JZ_G(dict_path));
-
-	char dict_path[BUFSIZE];
-	char dict_hmm_path[BUFSIZE];
-	char user_dict_path[BUFSIZE];
-	char idf_path[BUFSIZE];
-	char stop_words_path[BUFSIZE];
-
-	memcpy(dict_path, JZ_G(dict_path), jz_dict_path_len);
-	memcpy(dict_hmm_path, JZ_G(dict_path), jz_dict_path_len);
-	memcpy(user_dict_path, JZ_G(dict_path), jz_dict_path_len);
-	memcpy(idf_path, JZ_G(dict_path), jz_dict_path_len);
-	memcpy(stop_words_path, JZ_G(dict_path), jz_dict_path_len);
-
-	if (dict_path[jz_dict_path_len - 1] != '/') {
-		dict_path[jz_dict_path_len] = '/';
-		dict_hmm_path[jz_dict_path_len] = '/';
-		user_dict_path[jz_dict_path_len] = '/';
-		idf_path[jz_dict_path_len] = '/';
-		stop_words_path[jz_dict_path_len] = '/';
-
-		jz_dict_path_len += 1;
-	}
-
-	memcpy(dict_path + jz_dict_path_len, JZ_JIEBA_DICT_NAME, sizeof(JZ_JIEBA_DICT_NAME));
-	dict_path[jz_dict_path_len + sizeof(JZ_JIEBA_DICT_NAME)] = 0;
-
-	memcpy(dict_hmm_path + jz_dict_path_len, JZ_JIEBA_DICT_HMM_NAME, sizeof(JZ_JIEBA_DICT_HMM_NAME));
-	dict_hmm_path[jz_dict_path_len + sizeof(JZ_JIEBA_DICT_HMM_NAME)] = 0;
-
-	memcpy(user_dict_path + jz_dict_path_len, JZ_JIEBA_USER_DICT_NAME, sizeof(JZ_JIEBA_USER_DICT_NAME));
-	user_dict_path[jz_dict_path_len + sizeof(JZ_JIEBA_USER_DICT_NAME)] = 0;
-
-	memcpy(idf_path + jz_dict_path_len, JZ_JIEBA_IDF_NAME, sizeof(JZ_JIEBA_IDF_NAME));
-	idf_path[jz_dict_path_len + sizeof(JZ_JIEBA_IDF_NAME)] = 0;
-
-	memcpy(stop_words_path + jz_dict_path_len, JZ_JIEBA_STP_WORDS_NAME, sizeof(JZ_JIEBA_STP_WORDS_NAME));
-	stop_words_path[jz_dict_path_len + sizeof(JZ_JIEBA_STP_WORDS_NAME)] = 0;
-
-	if (access(dict_path, R_OK|F_OK) != 0
-		|| access(dict_hmm_path, R_OK|F_OK) != 0
-		|| access(user_dict_path, R_OK|F_OK) != 0
-		|| access(idf_path, R_OK|F_OK) != 0
-		|| access(stop_words_path, R_OK|F_OK) != 0) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Please init your jieba dict path in php.ini");
-		return FAILURE;
-	}
-
-	JZ_G(jieba) = NewJieba(dict_path, dict_hmm_path, user_dict_path, idf_path, stop_words_path);
-	JZ_G(extractor) = NewExtractor(dict_path, dict_hmm_path, idf_path, stop_words_path, user_dict_path);
-
 #endif
 
 	JZ_STARTUP(data);
@@ -165,11 +168,13 @@ PHP_MINIT_FUNCTION(jz)
  */
 PHP_MSHUTDOWN_FUNCTION(jz)
 {
-#ifdef JZ_USE_CJIEBA
+#ifdef JZ_USE_JIEBA
 	UNREGISTER_INI_ENTRIES();
 
-	FreeJieba(JZ_G(jieba));
-	FreeExtractor(JZ_G(extractor));
+	if (JZ_G(enable_jieba) == 1) {
+		FreeJieba(JZ_G(jieba));
+		FreeExtractor(JZ_G(extractor));
+	}
 #endif
 
 	return SUCCESS;
@@ -204,7 +209,7 @@ PHP_MINFO_FUNCTION(jz)
 	php_info_print_table_row(2, "version", PHP_JZ_VERSION);
 	php_info_print_table_end();
 
-#ifdef JZ_USE_CJIEBA
+#ifdef JZ_USE_JIEBA
 	DISPLAY_INI_ENTRIES();
 #endif
 }
@@ -477,7 +482,7 @@ PHP_FUNCTION(jz_trace)
 	efree(params);
 }
 
-#ifdef JZ_USE_CJIEBA
+#ifdef JZ_USE_JIEBA
 PHP_FUNCTION(jz_jieba)
 {
 	char *sentence = NULL;
@@ -487,6 +492,10 @@ PHP_FUNCTION(jz_jieba)
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|bl", &sentence, &sentence_len, &use_extract, &extract_limit) == FAILURE
 		|| extract_limit <= 0) {
+		RETURN_FALSE;
+	}
+
+	if (JZ_G(enable_jieba) == 0) {
 		RETURN_FALSE;
 	}
 
@@ -521,7 +530,7 @@ const zend_function_entry jz_functions[] = {
 	PHP_FE(jz_encrypt, arg_info_jz_encrypt)
 	PHP_FE(jz_decrypt, arg_info_jz_decrypt)
 	PHP_FE(jz_trace,   arg_info_jz_trace)
-#ifdef JZ_USE_CJIEBA
+#ifdef JZ_USE_JIEBA
 	PHP_FE(jz_jieba,   arg_info_jz_jieba)
 #endif
 	PHP_FE_END	/* Must be the last line in jz_functions[] */

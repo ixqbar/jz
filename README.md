@@ -47,11 +47,11 @@ make
 
 cd ..
 phpize
-./configure --enable-cjieba
+./configure --enable-jieba
 make
 make install
 ```
-* --enable-cjieba 可选
+* --enable-jieba 可选
 * jieba more detail please visit https://github.com/yanyiwu/cppjieba
 
 ### jz_jieba example

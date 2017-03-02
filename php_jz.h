@@ -47,9 +47,10 @@ PHP_FUNCTION(jz_encrypt);
 PHP_FUNCTION(jz_decrypt);
 PHP_FUNCTION(jz_trace);
 
-#ifdef JZ_USE_CJIEBA
+#ifdef JZ_USE_JIEBA
 	#include "jieba.h"
 	ZEND_BEGIN_MODULE_GLOBALS(jz)
+		zend_bool enable_jieba;
 		Extractor extractor;
 		Jieba jieba;
 		char *dict_path;

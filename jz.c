@@ -32,6 +32,7 @@
 #include "jz_common.h"
 #include "jz_data.h"
 #include "jz_buffer.h"
+#include "jz_rc4.h"
 #include "aes.c"
 #include "zlib.c"
 
@@ -88,6 +89,10 @@ ZEND_BEGIN_ARG_INFO_EX(arg_info_jz_trace, 0, 0, 1)
 	ZEND_ARG_INFO(0, func_name)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arg_info_jz_rc4, 0, 0, 2)
+	ZEND_ARG_INFO(0, encrypt_str)
+	ZEND_ARG_INFO(0, encrypt_key)
+ZEND_END_ARG_INFO()
 
 /* }}} */
 
@@ -226,12 +231,12 @@ PHP_FUNCTION(jz_encrypt)
 	size_t encrypt_data_len, encrypt_key_len;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &encrypt_data, &encrypt_data_len, &encrypt_key, &encrypt_key_len) == FAILURE) {
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	if (0 == encrypt_data_len
 		|| 0 == encrypt_key_len) {
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	int crc = 0^0xFFFFFFFF;
@@ -256,7 +261,7 @@ PHP_FUNCTION(jz_encrypt)
 		int encoding = 0x0f;
 		zend_string *out = php_zlib_encode(encrypt_data, encrypt_data_len, encoding, level);
 		if (!out) {
-			RETURN_NULL();
+			RETURN_FALSE;
 		}
 		aes_data_len = out->len;
 		aes_data = estrndup(out->val, out->len);
@@ -313,7 +318,7 @@ PHP_FUNCTION(jz_encrypt)
 		efree(aes_data);
 		efree(aes_origin_buf);
 		efree(aes_finnal_buf);
-		RETURN_NULL();
+		RETURN_FALSE;
 	}
 
 	memcpy(result + 16, aes_finnal_buf, aes_buf_size);
@@ -521,6 +526,27 @@ PHP_FUNCTION(jz_jieba)
 }
 #endif
 
+PHP_FUNCTION(jz_rc4)
+{
+	char *encrypt_data = NULL, *encrypt_key=NULL;
+	size_t encrypt_data_len, encrypt_key_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &encrypt_data, &encrypt_data_len, &encrypt_key, &encrypt_key_len) == FAILURE) {
+		RETURN_FALSE;
+	}
+
+	if (0 == encrypt_data_len
+		|| 0 == encrypt_key_len) {
+		RETURN_FALSE;
+	}
+
+	unsigned char state[JZ_RC4_STATE_LEN];
+	jz_rc4_init(state, encrypt_key, encrypt_key_len);
+	jz_rc4_crypt(state, encrypt_data, encrypt_data_len);
+
+	RETURN_STRINGL(encrypt_data, encrypt_data_len);
+}
+
 /* {{{ jz_functions[]
  *
  * Every user visible function must have an entry in jz_functions[].
@@ -530,6 +556,7 @@ const zend_function_entry jz_functions[] = {
 	PHP_FE(jz_encrypt, arg_info_jz_encrypt)
 	PHP_FE(jz_decrypt, arg_info_jz_decrypt)
 	PHP_FE(jz_trace,   arg_info_jz_trace)
+	PHP_FE(jz_rc4,     arg_info_jz_rc4)
 #ifdef JZ_USE_JIEBA
 	PHP_FE(jz_jieba,   arg_info_jz_jieba)
 #endif

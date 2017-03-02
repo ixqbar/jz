@@ -46,6 +46,7 @@ PHP_FUNCTION(jz_version);
 PHP_FUNCTION(jz_encrypt);
 PHP_FUNCTION(jz_decrypt);
 PHP_FUNCTION(jz_trace);
+PHP_FUNCTION(jz_rc4);
 
 #ifdef JZ_USE_JIEBA
 	#include "jieba.h"

@@ -8,3 +8,9 @@ print_r($result);
 
 $result = jz_jieba('他心理健康');
 print_r($result);
+
+$result = jz_jieba('this is a demo, my name is jony', true, 10);
+print_r($result);
+
+$result = jz_jieba('this is a demo, my name is jony');
+print_r($result);

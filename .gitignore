@@ -33,3 +33,8 @@ tests/*/*.php
 tests/*/*.exp
 tests/*/*.log
 tests/*/*.sh
+demo
+*.o
+*.a
+*.so
+config.h.in~

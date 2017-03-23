@@ -101,6 +101,8 @@ ZEND_END_ARG_INFO()
 PHP_MINIT_FUNCTION(jz)
 {
 #ifdef JZ_USE_JIEBA
+	ZEND_INIT_MODULE_GLOBALS(jieba, php_jz_init_globals, NULL);
+
 	REGISTER_INI_ENTRIES();
 
 	if (JZ_G(enable_jieba) == 1) {

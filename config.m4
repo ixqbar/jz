@@ -44,6 +44,7 @@ if test "$PHP_JZ" != "no"; then
   fi
   
   if test "$PHP_JIEBA" = "yes"; then
+     PHP_ADD_LIBRARY(stdc++, 1, JIEBA_SHARED_LIBADD)
      AC_DEFINE(JZ_USE_JIEBA, 1, [use jieba])
      PHP_ADD_INCLUDE("./cjieba/include")
      PHP_ADD_LIBRARY_WITH_PATH(jieba, "./cjieba/lib", JZ_SHARED_LIBADD)

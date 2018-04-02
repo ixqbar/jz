@@ -305,8 +305,10 @@ JZ_STARTUP_FUNCTION(data)
 	INIT_CLASS_ENTRY(ce, "JZ_Data", jz_data_methods);
 	jz_data_class_entry = zend_register_internal_class(&ce TSRMLS_CC);
 
-#ifdef HAVE_SPL
+#if defined(HAVE_SPL) && PHP_VERSION_ID < 70200
 	zend_class_implements(jz_data_class_entry, 3, zend_ce_iterator, zend_ce_arrayaccess, spl_ce_Countable);
+#elif PHP_VERSION_ID >= 70200
+	zend_class_implements(jz_data_class_entry, 3, zend_ce_iterator, zend_ce_arrayaccess, zend_ce_countable);
 #else
 	zend_class_implements(jz_data_class_entry, 2, zend_ce_iterator, zend_ce_arrayaccess);
 #endif

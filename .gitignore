@@ -38,3 +38,4 @@ demo
 *.a
 *.so
 config.h.in~
+configure.ac

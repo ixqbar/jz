@@ -43,20 +43,7 @@ PHP_RSHUTDOWN_FUNCTION(jz);
 PHP_MINFO_FUNCTION(jz);
 
 PHP_FUNCTION(jz_version);
-PHP_FUNCTION(jz_encrypt);
-PHP_FUNCTION(jz_decrypt);
-PHP_FUNCTION(jz_trace);
 PHP_FUNCTION(jz_rc4);
-
-#ifdef JZ_USE_JIEBA
-	#include "jieba.h"
-	ZEND_BEGIN_MODULE_GLOBALS(jz)
-		zend_bool enable_jieba;
-		Extractor extractor;
-		Jieba jieba;
-		char *dict_path;
-	ZEND_END_MODULE_GLOBALS(jz)
-#endif
 
 #define JZ_G(v) ZEND_MODULE_GLOBALS_ACCESSOR(jz, v)
 

@@ -37,9 +37,6 @@ class JZ_Buffer() {
 ### install
 ```
 git clone https://github.com/jonnywang/jz.git
-make
-
-cd ..
 phpize
 ./configure
 make
